@@ -6,8 +6,8 @@
   "build": {
     "frontendDist": "../../../frontend/apps/artcraft/dist",
     "devUrl": "http://localhost:5173",
-    "beforeDevCommand": "nx run artcraft:dev",
-    "beforeBuildCommand": "nx run artcraft:build"
+    "beforeDevCommand": "bash -lc 'cd \"${TAURI_FRONTEND_PATH:-$(git rev-parse --show-toplevel)/frontend}\" && npx nx run artcraft:dev'",
+    "beforeBuildCommand": "bash -lc 'cd \"${TAURI_FRONTEND_PATH:-$(git rev-parse --show-toplevel)/frontend}\" && npx nx run artcraft:build'"
   },
   "app": {
     "withGlobalTauri": true,
