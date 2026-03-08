@@ -33,6 +33,9 @@ export TAURI_APP_PATH="${rust_crate_path}"
 # hostnames we use, not minification, etc.
 export VITE_ENVIRONMENT_TYPE="production"
 
+# Keep memory usage lower on constrained hosts to prevent rustc SIGKILL/OOM.
+export CARGO_BUILD_JOBS=1
+
 # This appears to trigger "nx build" instead of "nx dev".
 cargo tauri build --config "${config_path}"
 
