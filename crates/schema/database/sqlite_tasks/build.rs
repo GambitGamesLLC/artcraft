@@ -22,6 +22,7 @@ pub fn main() {
 
 fn unix_temp_database_pathing() {
   println!("cargo:rustc-env=DATABASE_URL=sqlite:/tmp/tasks.sqlite");
+  println!("cargo:rustc-env=SQLX_OFFLINE=true");
 }
 
 fn windows_temp_database_pathing() {
@@ -34,6 +35,7 @@ fn windows_temp_database_pathing() {
         .to_string();
     println!("cargo:warning=LocalAppData path: {}", path);
     println!("cargo:rustc-env=DATABASE_URL=sqlite:{}", path);
+    println!("cargo:rustc-env=SQLX_OFFLINE=true");
   } else {
     panic!("LOCALAPPDATA environment variable not set");
   }
