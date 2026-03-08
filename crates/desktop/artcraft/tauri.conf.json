@@ -89,5 +89,11 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ]
+  },
+  "plugins": {
+    "cli": {
+      "description": "ArtCraft CLI for external automation",
+      "longDescription": "Control ArtCraft AI generation workflows from the command line"
+    }
   }
 }

@@ -1,0 +1,37 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "test-cli-plugin",
+  "version": "0.1.0",
+  "identifier": "test.cli.plugin",
+  "build": {
+    "frontendDist": null,
+    "devUrl": null
+  },
+  "app": {
+    "withGlobalTauri": false,
+    "windows": []
+  },
+  "bundle": {
+    "active": false
+  },
+  "plugins": {
+    "cli": {
+      "description": "Test CLI plugin integration",
+      "longDescription": "Minimal test to verify tauri-plugin-cli works",
+      "args": [
+        {
+          "name": "test",
+          "short": "t",
+          "description": "Run test command",
+          "takesValue": false
+        }
+      ],
+      "subcommands": {
+        "test-command": {
+          "description": "Execute the test command",
+          "args": []
+        }
+      }
+    }
+  }
+}
