@@ -37,7 +37,21 @@ export VITE_ENVIRONMENT_TYPE="production"
 export CARGO_BUILD_JOBS=1
 
 # This appears to trigger "nx build" instead of "nx dev".
-cargo tauri build --config "${config_path}"
+#
+# NOTE (OpenClaw): RPM bundling appears to hang on some hosts. By default on Linux we
+# bundle **deb only** to ensure local builds complete. Override with:
+#   ARTCRAFT_TAURI_BUNDLES="deb,rpm" ./script/artcraft/unix_build.sh
+# or to skip bundling entirely:
+#   ARTCRAFT_TAURI_NO_BUNDLE=1 ./script/artcraft/unix_build.sh
+bundles_args=()
+if [[ "${ARTCRAFT_TAURI_NO_BUNDLE:-}" == "1" ]]; then
+  bundles_args+=(--no-bundle)
+elif [[ "$(uname)" == "Linux" ]]; then
+  bundles="${ARTCRAFT_TAURI_BUNDLES:-deb}"
+  bundles_args+=(--bundles "${bundles}")
+fi
+
+cargo tauri build --config "${config_path}" "${bundles_args[@]}"
 
 echo "Done!"
 
