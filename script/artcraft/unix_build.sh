@@ -3,6 +3,9 @@
 
 set -euxo pipefail
 
+# OpenClaw non-login shells may not include Rust toolchain bins in PATH.
+export PATH="$HOME/.cargo/bin:$PATH"
+
 echo "Building production Artcraft..."
 echo ""
 
