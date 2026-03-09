@@ -110,3 +110,25 @@ Common options:
 - `--skip-payload-hardening`
 
 The verifier will **not** enable the UNSAFE gate and will **not** run any UNSAFE command beyond the expected pre-flight enforcement failures.
+
+### Optional UNSAFE smoke tests (explicit opt-in)
+
+For an extra smoke test of the `--unsafe` path, the verifier can execute a small, approved UNSAFE subset **only** when you explicitly opt in:
+
+```bash
+./scripts/tools/verify_artcraft_cli_commands.py --run-unsafe-subset readonly --unsafe-gate-on
+```
+
+Additional latches:
+
+- `readonly-network-cost` is **SKIPPED** unless you also pass `--allow-network` (it may hit the network / incur cost):
+
+  ```bash
+  ./scripts/tools/verify_artcraft_cli_commands.py --run-unsafe-subset readonly-network-cost --unsafe-gate-on --allow-network
+  ```
+
+- `readonly-account` is **SKIPPED** unless you also pass `--allow-credentialed` (it reads credentialed account state):
+
+  ```bash
+  ./scripts/tools/verify_artcraft_cli_commands.py --run-unsafe-subset readonly-account --unsafe-gate-on --allow-credentialed
+  ```

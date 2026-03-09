@@ -17,7 +17,7 @@ This script is intended to validate the contract documented in:
 Usage:
   ./scripts/tools/verify_artcraft_cli_commands.py
   ./scripts/tools/verify_artcraft_cli_commands.py --run-unsafe-subset readonly --unsafe-gate-on
-  ./scripts/tools/verify_artcraft_cli_commands.py --run-unsafe-subset readonly-network-cost --unsafe-gate-on
+  ./scripts/tools/verify_artcraft_cli_commands.py --run-unsafe-subset readonly-network-cost --unsafe-gate-on --allow-network
   ./scripts/tools/verify_artcraft_cli_commands.py --run-unsafe-subset readonly-account --unsafe-gate-on --allow-credentialed
 
 Notes:
@@ -52,7 +52,7 @@ ONE_BY_ONE_PNG_B64 = (
 
 # Initial, hardcoded UNSAFE subset(s) we allow this verifier to execute.
 # v1: readonly subset.
-# v2: readonly-network-cost subset (hits network, should remain readonly; no credentials).
+# v2: readonly-network-cost subset (may hit network / incur cost; explicit opt-in required).
 # v3: readonly-account subset (credentialed account reads; explicit opt-in required).
 UNSAFE_SUBSETS: dict[str, list[str]] = {
     "readonly": [
@@ -302,17 +302,24 @@ def run_unsafe_subset(
     subset_name: str,
     unsafe_allowlist: list[str],
     allow_credentialed: bool,
+    allow_network: bool,
 ) -> None:
     commands = UNSAFE_SUBSETS[subset_name]
+
+    # Some subsets are latched behind additional explicit opt-ins.
+    if subset_name == "readonly-account" and not allow_credentialed:
+        print("readonly-account: SKIPPED (credentialed; re-run with --allow-credentialed)")
+        return
+
+    if subset_name == "readonly-network-cost" and not allow_network:
+        print("readonly-network-cost: SKIPPED (may hit network / incur cost; re-run with --allow-network)")
+        return
 
     # Validate we are only running known-UNSAFE commands.
     for cmd in commands:
         require(cmd in unsafe_allowlist, f"requested UNSAFE subset command not in CLI unsafe allowlist: {cmd}")
 
     for cmd in commands:
-        if subset_name == "readonly-account" and not allow_credentialed:
-            print(f"{cmd}: SKIPPED (credentialed; re-run with --allow-credentialed)")
-            continue
 
         payload = _payload_for_unsafe_subset_command(subset_name, cmd)
 
@@ -355,6 +362,12 @@ def main() -> int:
         "--allow-credentialed",
         action="store_true",
         help="Allow running credentialed UNSAFE subsets (e.g. readonly-account). Without this flag they are SKIPPED.",
+    )
+    ap.add_argument(
+        "--allow-network",
+        "--allow-network-cost",
+        action="store_true",
+        help="Allow running UNSAFE subsets that may hit the network / incur cost (e.g. readonly-network-cost). Without this flag they are SKIPPED.",
     )
     args = ap.parse_args()
 
@@ -411,6 +424,7 @@ def main() -> int:
                     subset_name=args.unsafe_subset,
                     unsafe_allowlist=unsafe2,
                     allow_credentialed=args.allow_credentialed,
+                    allow_network=args.allow_network,
                 )
 
         except (VerificationError, subprocess.TimeoutExpired) as e:
