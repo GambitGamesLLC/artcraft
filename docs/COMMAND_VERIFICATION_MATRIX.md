@@ -121,10 +121,10 @@ For an extra smoke test of the `--unsafe` path, the verifier can execute a small
 
 Additional latches:
 
-- `readonly-network-cost` is **SKIPPED** unless you also pass `--allow-network` (it may hit the network / incur cost):
+- `readonly-network-cost` is **SKIPPED** unless you also pass `--allow-network` **or** `--allow-network-cost` (it may hit the network / incur cost):
 
   ```bash
-  ./scripts/tools/verify_artcraft_cli_commands.py --run-unsafe-subset readonly-network-cost --unsafe-gate-on --allow-network
+  ./scripts/tools/verify_artcraft_cli_commands.py --run-unsafe-subset readonly-network-cost --unsafe-gate-on --allow-network-cost
   ```
 
 - `readonly-account` is **SKIPPED** unless you also pass `--allow-credentialed` (it reads credentialed account state):

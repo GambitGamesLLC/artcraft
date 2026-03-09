@@ -2,10 +2,19 @@
 
 **Location:** `./artcraft-cli.sh`
 
-This repo includes a small bash wrapper around ArtCraft’s **generic** CLI entrypoint:
+This repo includes a small bash wrapper around ArtCraft’s **generic** CLI entrypoint.
+
+Underlying binary:
 
 ```bash
-artcraft invoke <command> [--payload <json|@file>] [--json] [--unsafe] [--list-allowed]
+./target/release/artcraft invoke <command> [--payload <json|@file>] [--json] [--unsafe]
+./target/release/artcraft invoke --list-allowed --json
+```
+
+Wrapper form (note: for `./artcraft-cli.sh invoke`, the `<command>` must come immediately after `invoke`; pass flags like `--unsafe` *after* the command):
+
+```bash
+./artcraft-cli.sh invoke <command> [--payload <json|@file>] [--json] [--unsafe]
 ```
 
 ## Quick start
@@ -30,7 +39,8 @@ ARTCRAFT_ENABLE_UNSAFE_INVOKE=1 ./artcraft-cli.sh queue:list --unsafe --json
 ./artcraft-cli.sh invoke platform_info_command --json
 
 # generic invoke (UNSAFE)
-ARTCRAFT_ENABLE_UNSAFE_INVOKE=1 ./artcraft-cli.sh invoke --unsafe get_task_queue_command --json
+# (wrapper requires the command immediately after "invoke")
+ARTCRAFT_ENABLE_UNSAFE_INVOKE=1 ./artcraft-cli.sh invoke get_task_queue_command --unsafe --json
 ```
 
 ## Notes

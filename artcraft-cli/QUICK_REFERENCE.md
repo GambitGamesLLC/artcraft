@@ -37,4 +37,7 @@ ARTCRAFT_ENABLE_UNSAFE_INVOKE=1 ./target/release/artcraft invoke --unsafe get_pr
 # UNSAFE commands require --unsafe + gate
 ARTCRAFT_ENABLE_UNSAFE_INVOKE=1 ./artcraft-cli.sh app:info --unsafe --json
 ARTCRAFT_ENABLE_UNSAFE_INVOKE=1 ./artcraft-cli.sh queue:list --unsafe --json
+
+# Generic via wrapper (note: command must come immediately after "invoke")
+ARTCRAFT_ENABLE_UNSAFE_INVOKE=1 ./artcraft-cli.sh invoke get_task_queue_command --unsafe --json
 ```
