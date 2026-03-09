@@ -11,7 +11,9 @@ pub struct AppEnvConfigs {
 impl AppEnvConfigs {
 
   pub fn load_from_filesystem(root: &AppDataRoot) -> AnyhowResult<Self> {
-    println!("Loading app environmental configs from filesystem...");
+    if std::env::var("ARTCRAFT_CLI_JSON").is_err() {
+      println!("Loading app environmental configs from filesystem...");
+    }
     let input = AppEnvConfigsSerializable::load_from_filesystem(root)?;
 
     let storyteller = input.as_ref()
@@ -28,7 +30,9 @@ impl AppEnvConfigs {
       _ => ApiHost::Storyteller,
     };
     
-    println!("Using storyteller API host: {:?}", storyteller_api);
+    if std::env::var("ARTCRAFT_CLI_JSON").is_err() {
+      println!("Using storyteller API host: {:?}", storyteller_api);
+    }
 
     Ok(Self {
       storyteller_host: storyteller_api,

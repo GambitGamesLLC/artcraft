@@ -80,3 +80,15 @@ those providers, for example: OpenArt, FreePik, etc.
 - [license](./LICENSE.md)
 - [roadmap](./ROADMAP.md)
 
+## CLI automation (generic `invoke`)
+
+For headless automation, ArtCraft exposes a small allowlisted CLI entrypoint:
+
+```bash
+./target/release/artcraft invoke platform_info_command --json
+./target/release/artcraft invoke get_app_info_command --json
+./target/release/artcraft invoke get_task_queue_command --json
+```
+
+See also: `./artcraft-cli.sh --help`
+

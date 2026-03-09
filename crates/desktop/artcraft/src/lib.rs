@@ -71,7 +71,10 @@ use crate::services::worldlabs::state::worldlabs_bearer_bridge::WorldlabsBearerB
 use crate::services::worldlabs::state::worldlabs_credential_manager::WorldlabsCredentialManager;
 use log::error;
 
+use crate::core::cli::invoke_dispatcher::dispatch_invoke;
+
 use tauri_plugin_cli;
+use tauri_plugin_cli::CliExt;
 use tauri_plugin_dialog;
 use tauri_plugin_http;
 use tauri_plugin_log::Target;
@@ -82,17 +85,39 @@ use crate::core::state::artcraft_usage_tracker::artcraft_usage_tracker::Artcraft
 pub fn run() {
   // NB: Tauri wants to install the logger itself, so we can't rely on the logger crate
   // until the tauri runtime begins.
-  println!("Loading config...");
+  //
+  // Also: when running the external CLI (`artcraft invoke ...`), we must not print extra
+  // startup banners to stdout because the caller expects pure JSON.
+  let raw_args: Vec<String> = std::env::args().collect();
+  let is_cli_invoke = raw_args.iter().any(|a| a == "invoke");
+  let is_cli_invoke_json = is_cli_invoke && raw_args.iter().any(|a| a == "--json");
+
+  // Used by a couple of low-level startup helpers that still print with `println!`.
+  if is_cli_invoke_json {
+    std::env::set_var("ARTCRAFT_CLI_JSON", "1");
+  }
+
+  let show_startup_prints = !is_cli_invoke_json;
+
+  if show_startup_prints {
+    println!("Loading config...");
+  }
   let app_data_root = AppDataRoot::create_default().expect("data directory should be created");
   let app_data_root_2 = app_data_root.clone();
 
-  println!("Getting platform info...");
+  if show_startup_prints {
+    println!("Getting platform info...");
+  }
   let artcraft_platform_info = ArtcraftPlatformInfo::get();
   let artcraft_platform_info_2 = artcraft_platform_info.clone();
 
-  println!("Platform info: {:?}", artcraft_platform_info);
+  if show_startup_prints {
+    println!("Platform info: {:?}", artcraft_platform_info);
+  }
 
-  println!("Loading app preferences...");
+  if show_startup_prints {
+    println!("Loading app preferences...");
+  }
   let app_preferences = load_app_preferences_or_default(&app_data_root);
   
   // NB: tauri-plugin-http stores the credentials on disk, so we can defer to that for now.
@@ -102,7 +127,9 @@ pub fn run() {
   let storyteller_creds_manager_2 = storyteller_creds_manager.clone();
   let storyteller_creds_manager_3 = storyteller_creds_manager.clone();
   
-  println!("Attempting to read existing sora credentials...");
+  if show_startup_prints {
+    println!("Attempting to read existing sora credentials...");
+  }
   let sora_creds_manager = SoraCredentialManager::initialize_from_disk_infallible(&app_data_root);
   let sora_creds_manager_2 = sora_creds_manager.clone();
   
@@ -133,15 +160,24 @@ pub fn run() {
   let artcraft_usage_tracker = ArtcraftUsageTracker::new();
   let artcraft_usage_tracker_2 = artcraft_usage_tracker.clone();
 
-  println!("Initializing backend runtime...");
+  if show_startup_prints {
+    println!("Initializing backend runtime...");
+  }
 
-  let builder = tauri::Builder::default()
-    .plugin(tauri_plugin_cli::init())
-    .plugin(tauri_plugin_dialog::init())
-    .plugin(tauri_plugin_http::init())
-    .plugin(tauri_plugin_opener::init())
-    .plugin(tauri_plugin_upload::init())
-    .setup(move |app| {
+  let mut builder = tauri::Builder::default()
+    .plugin(tauri_plugin_cli::init());
+
+  // For `artcraft invoke ... --json`, keep stdout clean: avoid initializing plugins that print
+  // during setup.
+  if !is_cli_invoke_json {
+    builder = builder
+      .plugin(tauri_plugin_dialog::init())
+      .plugin(tauri_plugin_http::init())
+      .plugin(tauri_plugin_opener::init())
+      .plugin(tauri_plugin_upload::init());
+  }
+
+  let builder = builder.setup(move |app| {
       // TODO(bt): This is broken on windows
       // log_environment_details();
 
@@ -152,6 +188,40 @@ pub fn run() {
       //      .build(),
       //  )?;
       //}
+
+      // Early CLI dispatcher (no window, no background threads).
+      //
+      // This runs before any window setup, so automation can call:
+      //   artcraft invoke platform_info_command --json
+      let matches = match app.cli().matches() {
+        Ok(matches) => matches,
+        Err(err) => {
+          eprintln!("Failed to parse CLI args: {err:?}");
+          std::process::exit(2);
+        }
+      };
+
+      if let Some(help) = matches
+        .args
+        .get("help")
+        .and_then(|arg| arg.value.as_str())
+      {
+        print!("{help}");
+        std::process::exit(0);
+      }
+
+      if matches.args.contains_key("version") {
+        println!("{}", app.package_info().version);
+        std::process::exit(0);
+      }
+
+      if let Some(subcommand) = matches.subcommand {
+        if subcommand.name == "invoke" {
+          let exit_code = dispatch_invoke(app, &subcommand.matches);
+          std::process::exit(exit_code);
+        }
+      }
+
       let app = app.handle().clone();
       let handle = app.clone();
       let root = app_data_root_2.clone();

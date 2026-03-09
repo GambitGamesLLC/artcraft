@@ -93,7 +93,30 @@
   "plugins": {
     "cli": {
       "description": "ArtCraft CLI for external automation",
-      "longDescription": "Control ArtCraft AI generation workflows from the command line"
+      "longDescription": "Control ArtCraft AI generation workflows from the command line",
+      "subcommands": {
+        "invoke": {
+          "description": "Invoke an allowlisted internal command and print JSON to stdout",
+          "args": [
+            {
+              "name": "command",
+              "description": "Command to invoke (e.g. platform_info_command)",
+              "index": 1,
+              "takesValue": true,
+              "required": true
+            },
+            {
+              "name": "payload",
+              "description": "Optional JSON payload string or @/path/to/file.json",
+              "takesValue": true
+            },
+            {
+              "name": "json",
+              "description": "Output JSON only (suppress extra startup prints)"
+            }
+          ]
+        }
+      }
     }
   }
 }

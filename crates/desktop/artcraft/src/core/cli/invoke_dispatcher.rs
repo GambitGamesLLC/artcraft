@@ -1,0 +1,146 @@
+use crate::core::commands::get_app_info_command::get_app_info_command;
+use crate::core::commands::platform_info_command::platform_info_command;
+use crate::core::commands::response::failure_response_wrapper::CommandErrorResponseWrapper;
+use crate::core::commands::task_queue::get_task_queue_command::get_task_queue_command;
+use crate::core::state::app_env_configs::app_env_configs::AppEnvConfigs;
+use crate::core::state::data_dir::app_data_root::AppDataRoot;
+use crate::core::state::task_database::TaskDatabase;
+use serde_json::Value;
+use tauri::Manager;
+use tauri_plugin_cli::Matches;
+
+fn arg_string(matches: &Matches, name: &str) -> Option<String> {
+  matches
+    .args
+    .get(name)
+    .and_then(|arg| arg.value.as_str().map(|s| s.to_string()))
+}
+
+fn arg_bool(matches: &Matches, name: &str) -> bool {
+  matches
+    .args
+    .get(name)
+    .and_then(|arg| arg.value.as_bool())
+    .unwrap_or(false)
+}
+
+fn parse_payload(payload: Option<String>) -> Result<Option<Value>, String> {
+  let Some(payload) = payload else {
+    return Ok(None);
+  };
+
+  let payload = payload.trim().to_string();
+  if payload.is_empty() {
+    return Err("--payload was provided but empty".to_string());
+  }
+
+  let raw = if let Some(path) = payload.strip_prefix('@') {
+    std::fs::read_to_string(path)
+      .map_err(|err| format!("failed to read payload file '{path}': {err:?}"))?
+  } else {
+    payload
+  };
+
+  let parsed: Value = serde_json::from_str(&raw)
+    .map_err(|err| format!("invalid JSON payload: {err}"))?;
+
+  Ok(Some(parsed))
+}
+
+/// Handles: `artcraft invoke <command> [--payload <json|@file>] [--json]`
+///
+/// Returns the exit code that should be used.
+pub fn dispatch_invoke(app: &tauri::App, invoke_matches: &Matches) -> i32 {
+  let _json_only = arg_bool(invoke_matches, "json");
+
+  let command = match arg_string(invoke_matches, "command") {
+    Some(val) => val,
+    None => {
+      let err = CommandErrorResponseWrapper::<(), ()>::from(
+        "missing required positional arg: <command>",
+      );
+      println!("{}", serde_json::to_string(&err).unwrap());
+      return 2;
+    }
+  };
+
+  // Validate payload upfront (even if the allowlisted commands don't use it yet).
+  if let Err(msg) = parse_payload(arg_string(invoke_matches, "payload")) {
+    let err = CommandErrorResponseWrapper::<(), ()>::from(msg);
+    println!("{}", serde_json::to_string(&err).unwrap());
+    return 2;
+  }
+
+  match command.as_str() {
+    "platform_info_command" => {
+      let result = platform_info_command();
+      println!("{}", serde_json::to_string(&result).unwrap());
+      0
+    }
+
+    "get_app_info_command" => {
+      let result = get_app_info_command(
+        app.state::<AppDataRoot>(),
+        app.state::<AppEnvConfigs>(),
+        app.state(),
+        app.state(),
+      );
+      println!("{}", serde_json::to_string(&result).unwrap());
+      0
+    }
+
+    "get_task_queue_command" => {
+      // The GUI path registers TaskDatabase during startup; the CLI path must bootstrap it.
+      if app.try_state::<TaskDatabase>().is_none() {
+        let root_state = app.state::<AppDataRoot>();
+        let root: &AppDataRoot = &*root_state;
+
+        let connect_result = tauri::async_runtime::block_on(async {
+          TaskDatabase::connect(root).await
+        });
+
+        match connect_result {
+          Ok(task_database) => {
+            app.manage(task_database);
+          }
+          Err(err) => {
+            let err = CommandErrorResponseWrapper::<(), ()>::from(format!(
+              "failed to connect task database: {err:?}"
+            ));
+            println!("{}", serde_json::to_string(&err).unwrap());
+            return 4;
+          }
+        }
+      }
+
+      let app_handle = app.handle().clone();
+      let result = tauri::async_runtime::block_on(async {
+        get_task_queue_command(
+          app_handle,
+          app.state::<AppEnvConfigs>(),
+          app.state::<TaskDatabase>(),
+        )
+        .await
+      });
+
+      match result {
+        Ok(success) => {
+          println!("{}", serde_json::to_string(&success).unwrap());
+          0
+        }
+        Err(err) => {
+          println!("{}", serde_json::to_string(&err).unwrap());
+          4
+        }
+      }
+    }
+
+    _ => {
+      let err = CommandErrorResponseWrapper::<(), ()>::from(format!(
+        "unknown or disallowed command: {command}"
+      ));
+      println!("{}", serde_json::to_string(&err).unwrap());
+      3
+    }
+  }
+}

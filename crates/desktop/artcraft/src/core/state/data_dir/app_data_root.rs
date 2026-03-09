@@ -35,7 +35,9 @@ pub struct AppDataRoot {
 impl AppDataRoot {
   pub fn create_default() -> anyhow::Result<Self> {
     let directory = get_default_data_dir()?;
-    println!("App data directory: {:?}", directory);
+    if std::env::var("ARTCRAFT_CLI_JSON").is_err() {
+      println!("App data directory: {:?}", directory);
+    }
     Self::create_existing(directory)
   }
 
@@ -52,14 +54,18 @@ impl AppDataRoot {
     }
     
     if !dir.is_dir() {
-      println!("Creating directory {:?}", dir);
+      if std::env::var("ARTCRAFT_CLI_JSON").is_err() {
+        println!("Creating directory {:?}", dir);
+      }
       std::fs::create_dir_all(&dir)?;
     }
 
     match dir.canonicalize() {
       Ok(d) => dir = d,
       Err(err) => {
-        println!("Error canonicalizing {:?}: {}", dir, err);
+        if std::env::var("ARTCRAFT_CLI_JSON").is_err() {
+          println!("Error canonicalizing {:?}: {}", dir, err);
+        }
       }
     }
     

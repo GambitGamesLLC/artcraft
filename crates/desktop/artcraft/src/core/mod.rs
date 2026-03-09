@@ -1,5 +1,6 @@
 pub mod api_adapters;
 pub mod artcraft_error;
+pub mod cli;
 pub mod commands;
 pub mod events;
 pub mod lifecycle;
