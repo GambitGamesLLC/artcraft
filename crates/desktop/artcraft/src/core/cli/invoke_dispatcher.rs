@@ -89,6 +89,16 @@ struct CliConfig {
   enable_unsafe_invoke: Option<bool>,
 }
 
+fn cli_config_path() -> Option<std::path::PathBuf> {
+  let base_dirs = directories::BaseDirs::new()?;
+  Some(
+    base_dirs
+      .config_dir()
+      .join("artcraft")
+      .join("cli.json"),
+  )
+}
+
 fn unsafe_gate_enabled() -> Result<bool, String> {
   if std::env::var("ARTCRAFT_ENABLE_UNSAFE_INVOKE")
     .map(|v| v == "1")
@@ -97,11 +107,10 @@ fn unsafe_gate_enabled() -> Result<bool, String> {
     return Ok(true);
   }
 
-  let Some(config_dir) = dirs::config_dir() else {
+  let Some(cli_config_path) = cli_config_path() else {
     return Ok(false);
   };
 
-  let cli_config_path = config_dir.join("artcraft").join("cli.json");
   if !cli_config_path.exists() {
     return Ok(false);
   }
@@ -161,9 +170,16 @@ pub fn dispatch_invoke(app: &tauri::App, invoke_matches: &Matches) -> i32 {
     match unsafe_gate_enabled() {
       Ok(true) => {}
       Ok(false) => {
-        let err = CommandErrorResponseWrapper::<(), ()>::from(
-          "--unsafe requested but gate is disabled; set ARTCRAFT_ENABLE_UNSAFE_INVOKE=1 or ~/.config/artcraft/cli.json with {\"enableUnsafeInvoke\":true}",
-        );
+        let config_hint = match cli_config_path() {
+          Some(path) => {
+            format!("{} with {{\"enableUnsafeInvoke\":true}}", path.display())
+          }
+          None => "<app_config_dir>/artcraft/cli.json with {\"enableUnsafeInvoke\":true}".to_string(),
+        };
+
+        let err = CommandErrorResponseWrapper::<(), ()>::from(format!(
+          "--unsafe requested but gate is disabled; set ARTCRAFT_ENABLE_UNSAFE_INVOKE=1 or {config_hint}",
+        ));
         println!("{}", serde_json::to_string(&err).unwrap());
         return 2;
       }

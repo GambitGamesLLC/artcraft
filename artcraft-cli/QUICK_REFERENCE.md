@@ -23,7 +23,7 @@ Details + where to edit allowlists: `../docs/cli-safety.md` and `../crates/deskt
 ```bash
 # Fails with exit 2 unless one gate is enabled:
 #   - ARTCRAFT_ENABLE_UNSAFE_INVOKE=1
-#   - ~/.config/artcraft/cli.json with {"enableUnsafeInvoke": true}
+#   - <app_config_dir>/artcraft/cli.json with {"enableUnsafeInvoke": true}
 
 ARTCRAFT_ENABLE_UNSAFE_INVOKE=1 ./target/release/artcraft invoke --unsafe get_provider_order_command --json
 ```

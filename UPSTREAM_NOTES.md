@@ -101,7 +101,7 @@ The ArtCraft CLI config file is then:
 
 Concrete examples:
 
-- Linux (typical): `~/.config/artcraft/cli.json`
+- Linux (typical): `$XDG_CONFIG_HOME/artcraft/cli.json` (defaults to `$HOME/.config`)
 - macOS (typical): `~/Library/Application Support/artcraft/cli.json`
 - Windows (typical): `%APPDATA%\\artcraft\\cli.json`
 

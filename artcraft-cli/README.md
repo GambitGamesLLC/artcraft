@@ -47,7 +47,7 @@ artcraft invoke <command> [--payload <json|@file>] [--json] [--unsafe]
   - `get_task_queue_command`
 - `--unsafe` enables the unsafe dispatch tier (currently includes `get_provider_order_command`) but requires one gate:
   - env var: `ARTCRAFT_ENABLE_UNSAFE_INVOKE=1`
-  - or config file: `~/.config/artcraft/cli.json` with `{"enableUnsafeInvoke": true}`
+  - or config file: `<app_config_dir>/artcraft/cli.json` with `{"enableUnsafeInvoke": true}`
 - If `--unsafe` is used without a gate, CLI exits with code `2` and prints a JSON error.
 
 Where to edit the allowlists:

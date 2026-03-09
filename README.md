@@ -105,7 +105,7 @@ Unsafe invoke (gated):
 # gate via env var
 ARTCRAFT_ENABLE_UNSAFE_INVOKE=1 ./target/release/artcraft invoke --unsafe get_provider_order_command --json
 
-# or gate via config file: ~/.config/artcraft/cli.json
+# or gate via config file: <app_config_dir>/artcraft/cli.json
 # {"enableUnsafeInvoke": true}
 ./target/release/artcraft invoke --unsafe get_provider_order_command --json
 ```

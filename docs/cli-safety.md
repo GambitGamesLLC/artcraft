@@ -37,11 +37,17 @@ Unsafe commands require **both**:
 2) an enabled gate:
 
 - env var: `ARTCRAFT_ENABLE_UNSAFE_INVOKE=1`
-- OR config file: `~/.config/artcraft/cli.json` with:
+- OR config file: `<app_config_dir>/artcraft/cli.json` with:
 
 ```json
 { "enableUnsafeInvoke": true }
 ```
+
+Where `<app_config_dir>` resolves per-platform (examples):
+
+- Linux: `~/.config`
+- macOS: `~/Library/Application Support`
+- Windows: `%APPDATA%`
 
 If `--unsafe` is passed without the gate, the CLI exits with code `2` and prints a JSON error.
 
