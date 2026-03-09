@@ -85,9 +85,12 @@ those providers, for example: OpenArt, FreePik, etc.
 For headless automation, ArtCraft exposes a small allowlisted CLI entrypoint:
 
 ```bash
+# SAFE tier (no --unsafe / no gate required)
 ./target/release/artcraft invoke platform_info_command --json
-./target/release/artcraft invoke get_app_info_command --json
-./target/release/artcraft invoke get_task_queue_command --json
+./target/release/artcraft invoke flip_image --payload '{"image":"<base64>"}' --json
+
+# Discover the current tiered allowlist
+./target/release/artcraft invoke --list-allowed --json
 ```
 
 `--unsafe` enables a broader dispatch tier, but only when a gate is enabled:
