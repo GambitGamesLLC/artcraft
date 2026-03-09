@@ -56,25 +56,23 @@ class VerificationError(RuntimeError):
 
 
 def _json_from_stdout(stdout: str) -> Any:
-    """Parse a single JSON object from CLI stdout.
+    """Parse a single JSON value from CLI stdout.
 
-    The CLI is expected to print exactly one JSON value. We still try to be
-    tolerant of leading/trailing whitespace.
+    Contract: when invoked with --json, the CLI must emit *JSON-only* on stdout
+    (aside from leading/trailing whitespace). Any debug/log output belongs on
+    stderr.
     """
 
     s = stdout.strip()
     if not s:
         raise VerificationError("expected JSON on stdout, got empty output")
 
-    # If something logs above JSON, try to recover by finding first '{' or '['.
-    first_obj = min([i for i in (s.find("{"), s.find("[")) if i != -1], default=-1)
-    if first_obj > 0:
-        s = s[first_obj:]
-
     try:
         return json.loads(s)
     except json.JSONDecodeError as e:
-        raise VerificationError(f"failed to parse JSON from stdout: {e}\n--- stdout ---\n{stdout}")
+        raise VerificationError(
+            f"failed to parse JSON-only stdout: {e}\n--- stdout ---\n{stdout}\n--- stderr should contain logs ---"
+        )
 
 
 def _extract_error_code(obj: Any) -> str | None:

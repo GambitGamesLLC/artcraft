@@ -6,8 +6,6 @@ use std::io::Cursor;
 
 #[tauri::command]
 pub fn flip_image(image: &str) -> Result<String, String> {
-  println!("infer_image called; processing image...");
-
   let bytes = BASE64_STANDARD.decode(image)
     .map_err(|err| format!("Base64 decode error: {}", err))?;
 
@@ -29,8 +27,6 @@ pub fn flip_image(image: &str) -> Result<String, String> {
     .map_err(|err| format!("Image encoding error: {}", err))?;
 
   let encoded = BASE64_STANDARD.encode(&buffer);
-
-  println!("Encoded: {:?}", encoded.split_at(10).0);
 
   Ok(encoded)
 }
