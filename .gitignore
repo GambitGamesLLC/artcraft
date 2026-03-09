@@ -43,6 +43,9 @@ scratch/
 test_data/temp/
 tmp/
 
+# Build logs
+build-logs/
+
 # Rust build directory
 target/
 crates/lib/database_queries/target/
