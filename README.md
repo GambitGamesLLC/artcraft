@@ -90,5 +90,18 @@ For headless automation, ArtCraft exposes a small allowlisted CLI entrypoint:
 ./target/release/artcraft invoke get_task_queue_command --json
 ```
 
+`--unsafe` enables a broader dispatch tier, but only when a gate is enabled:
+
+```bash
+# gate via env var
+ARTCRAFT_ENABLE_UNSAFE_INVOKE=1 ./target/release/artcraft invoke --unsafe get_provider_order_command --json
+
+# or gate via config file: ~/.config/artcraft/cli.json
+# {"enableUnsafeInvoke": true}
+./target/release/artcraft invoke --unsafe get_provider_order_command --json
+```
+
+If `--unsafe` is used without either gate, CLI exits with code `2` and prints a JSON error.
+
 See also: `./artcraft-cli.sh --help`
 

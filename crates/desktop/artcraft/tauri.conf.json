@@ -113,6 +113,10 @@
             {
               "name": "json",
               "description": "Output JSON only (suppress extra startup prints)"
+            },
+            {
+              "name": "unsafe",
+              "description": "Enable broader invoke dispatch (requires env/config gate)"
             }
           ]
         }

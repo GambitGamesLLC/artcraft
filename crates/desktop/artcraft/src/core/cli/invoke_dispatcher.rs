@@ -1,10 +1,13 @@
 use crate::core::commands::get_app_info_command::get_app_info_command;
 use crate::core::commands::platform_info_command::platform_info_command;
+use crate::core::commands::providers::get_provider_order_command::get_provider_order_command;
 use crate::core::commands::response::failure_response_wrapper::CommandErrorResponseWrapper;
 use crate::core::commands::task_queue::get_task_queue_command::get_task_queue_command;
 use crate::core::state::app_env_configs::app_env_configs::AppEnvConfigs;
 use crate::core::state::data_dir::app_data_root::AppDataRoot;
+use crate::core::state::provider_priority::ProviderPriorityStore;
 use crate::core::state::task_database::TaskDatabase;
+use serde::Deserialize;
 use serde_json::Value;
 use tauri::Manager;
 use tauri_plugin_cli::Matches;
@@ -47,11 +50,61 @@ fn parse_payload(payload: Option<String>) -> Result<Option<Value>, String> {
   Ok(Some(parsed))
 }
 
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct CliConfig {
+  enable_unsafe_invoke: Option<bool>,
+}
+
+fn unsafe_gate_enabled() -> Result<bool, String> {
+  if std::env::var("ARTCRAFT_ENABLE_UNSAFE_INVOKE")
+    .map(|v| v == "1")
+    .unwrap_or(false)
+  {
+    return Ok(true);
+  }
+
+  let Some(config_dir) = dirs::config_dir() else {
+    return Ok(false);
+  };
+
+  let cli_config_path = config_dir.join("artcraft").join("cli.json");
+  if !cli_config_path.exists() {
+    return Ok(false);
+  }
+
+  let raw = std::fs::read_to_string(&cli_config_path)
+    .map_err(|err| format!("failed to read {}: {err}", cli_config_path.display()))?;
+
+  let parsed: CliConfig = serde_json::from_str(&raw)
+    .map_err(|err| format!("failed to parse {}: {err}", cli_config_path.display()))?;
+
+  Ok(parsed.enable_unsafe_invoke.unwrap_or(false))
+}
+
+fn ensure_provider_priority_store(app: &tauri::App) {
+  if app.try_state::<ProviderPriorityStore>().is_some() {
+    return;
+  }
+
+  let root_state = app.state::<AppDataRoot>();
+  let root: &AppDataRoot = &*root_state;
+
+  let provider_priority_store = match ProviderPriorityStore::from_filesystem_configs(root) {
+    Ok(Some(store)) => store,
+    Ok(None) => ProviderPriorityStore::default(),
+    Err(_) => ProviderPriorityStore::default(),
+  };
+
+  app.manage(provider_priority_store);
+}
+
 /// Handles: `artcraft invoke <command> [--payload <json|@file>] [--json]`
 ///
 /// Returns the exit code that should be used.
 pub fn dispatch_invoke(app: &tauri::App, invoke_matches: &Matches) -> i32 {
   let _json_only = arg_bool(invoke_matches, "json");
+  let unsafe_requested = arg_bool(invoke_matches, "unsafe");
 
   let command = match arg_string(invoke_matches, "command") {
     Some(val) => val,
@@ -69,6 +122,24 @@ pub fn dispatch_invoke(app: &tauri::App, invoke_matches: &Matches) -> i32 {
     let err = CommandErrorResponseWrapper::<(), ()>::from(msg);
     println!("{}", serde_json::to_string(&err).unwrap());
     return 2;
+  }
+
+  if unsafe_requested {
+    match unsafe_gate_enabled() {
+      Ok(true) => {}
+      Ok(false) => {
+        let err = CommandErrorResponseWrapper::<(), ()>::from(
+          "--unsafe requested but gate is disabled; set ARTCRAFT_ENABLE_UNSAFE_INVOKE=1 or ~/.config/artcraft/cli.json with {\"enableUnsafeInvoke\":true}",
+        );
+        println!("{}", serde_json::to_string(&err).unwrap());
+        return 2;
+      }
+      Err(msg) => {
+        let err = CommandErrorResponseWrapper::<(), ()>::from(msg);
+        println!("{}", serde_json::to_string(&err).unwrap());
+        return 2;
+      }
+    }
   }
 
   match command.as_str() {
@@ -121,6 +192,25 @@ pub fn dispatch_invoke(app: &tauri::App, invoke_matches: &Matches) -> i32 {
           app.state::<TaskDatabase>(),
         )
         .await
+      });
+
+      match result {
+        Ok(success) => {
+          println!("{}", serde_json::to_string(&success).unwrap());
+          0
+        }
+        Err(err) => {
+          println!("{}", serde_json::to_string(&err).unwrap());
+          4
+        }
+      }
+    }
+
+    "get_provider_order_command" if unsafe_requested => {
+      ensure_provider_priority_store(app);
+
+      let result = tauri::async_runtime::block_on(async {
+        get_provider_order_command(app.state::<ProviderPriorityStore>()).await
       });
 
       match result {

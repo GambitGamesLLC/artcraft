@@ -5,7 +5,7 @@
 This repo includes a small bash wrapper around ArtCraft’s **generic** CLI entrypoint:
 
 ```bash
-artcraft invoke <command> [--payload <json|@file>] [--json]
+artcraft invoke <command> [--payload <json|@file>] [--json] [--unsafe]
 ```
 
 ## Quick start
@@ -31,9 +31,11 @@ artcraft invoke <command> [--payload <json|@file>] [--json]
 ## Notes
 
 - The wrapper expects the binary at: `./target/release/artcraft`
-- The current Rust-side CLI dispatcher **allowlists** a small subset of commands for automation:
+- Default mode keeps a strict allowlist for automation:
   - `platform_info_command`
   - `get_app_info_command`
   - `get_task_queue_command`
-
-(Expand the allowlist as needed once the CLI contract stabilizes.)
+- `--unsafe` enables a broader dispatch tier (currently includes `get_provider_order_command`) but requires one gate:
+  - env var: `ARTCRAFT_ENABLE_UNSAFE_INVOKE=1`
+  - or config file: `~/.config/artcraft/cli.json` with `{"enableUnsafeInvoke": true}`
+- If `--unsafe` is used without a gate, CLI exits with code `2` and prints a JSON error.

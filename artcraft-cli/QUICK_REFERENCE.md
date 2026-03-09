@@ -1,6 +1,6 @@
 # ArtCraft CLI - Quick Reference
 
-## Generic invoke
+## Generic invoke (safe allowlist)
 
 ```bash
 # Print platform + webview runtime info
@@ -11,6 +11,16 @@
 
 # List the current task queue
 ./target/release/artcraft invoke get_task_queue_command --json
+```
+
+## Unsafe invoke (gated)
+
+```bash
+# Fails with exit 2 unless one gate is enabled:
+#   - ARTCRAFT_ENABLE_UNSAFE_INVOKE=1
+#   - ~/.config/artcraft/cli.json with {"enableUnsafeInvoke": true}
+
+ARTCRAFT_ENABLE_UNSAFE_INVOKE=1 ./target/release/artcraft invoke --unsafe get_provider_order_command --json
 ```
 
 ## Wrapper shortcuts
