@@ -5,7 +5,7 @@
 This repo includes a small bash wrapper around ArtCraft’s **generic** CLI entrypoint:
 
 ```bash
-artcraft invoke <command> [--payload <json|@file>] [--json] [--unsafe]
+artcraft invoke <command> [--payload <json|@file>] [--json] [--unsafe] [--list-allowed]
 ```
 
 ## Quick start
@@ -17,25 +17,37 @@ artcraft invoke <command> [--payload <json|@file>] [--json] [--unsafe]
 # platform info
 ./artcraft-cli.sh platform:info --json
 
-# app info
-./artcraft-cli.sh app:info --json
+# list allowed commands
+./target/release/artcraft invoke --list-allowed --json
 
-# task queue
-./artcraft-cli.sh queue:list --json
+# app info (UNSAFE; requires gate + --unsafe)
+ARTCRAFT_ENABLE_UNSAFE_INVOKE=1 ./artcraft-cli.sh app:info --unsafe --json
 
-# generic invoke
+# task queue (UNSAFE; requires gate + --unsafe)
+ARTCRAFT_ENABLE_UNSAFE_INVOKE=1 ./artcraft-cli.sh queue:list --unsafe --json
+
+# generic invoke (SAFE)
 ./artcraft-cli.sh invoke platform_info_command --json
-./artcraft-cli.sh invoke get_task_queue_command --json
+
+# generic invoke (UNSAFE)
+ARTCRAFT_ENABLE_UNSAFE_INVOKE=1 ./artcraft-cli.sh invoke --unsafe get_task_queue_command --json
 ```
 
 ## Notes
 
 - The wrapper expects the binary at: `./target/release/artcraft`
-- Default mode keeps a strict allowlist for automation:
-  - `platform_info_command`
-  - `get_app_info_command`
-  - `get_task_queue_command`
-- `--unsafe` enables a broader dispatch tier (currently includes `get_provider_order_command`) but requires one gate:
-  - env var: `ARTCRAFT_ENABLE_UNSAFE_INVOKE=1`
-  - or config file: `~/.config/artcraft/cli.json` with `{"enableUnsafeInvoke": true}`
-- If `--unsafe` is used without a gate, CLI exits with code `2` and prints a JSON error.
+- `artcraft invoke` is tiered:
+  - **SAFE** (no `--unsafe` needed):
+    - `platform_info_command`
+    - `flip_image`
+  - **UNSAFE** (everything else): requires `--unsafe` *and* one gate:
+    - env var: `ARTCRAFT_ENABLE_UNSAFE_INVOKE=1`
+    - or config file: `~/.config/artcraft/cli.json` with `{"enableUnsafeInvoke": true}`
+- Discover the current tiered allowlist:
+  - `./target/release/artcraft invoke --list-allowed --json`
+- Exit codes:
+  - `0` success
+  - `2` invalid args / unsafe gate disabled
+  - `3` disallowed/unknown (or missing `--unsafe` for an unsafe command)
+  - `4` runtime invoke error
+- When `--json` is passed, CLI-generated errors include `error_details.code` (e.g. `unsafe_gate_disabled`, `disallowed_command`, `invalid_args`).

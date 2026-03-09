@@ -103,12 +103,16 @@
               "description": "Command to invoke (e.g. platform_info_command)",
               "index": 1,
               "takesValue": true,
-              "required": true
+              "required": false
             },
             {
               "name": "payload",
               "description": "Optional JSON payload string or @/path/to/file.json",
               "takesValue": true
+            },
+            {
+              "name": "list-allowed",
+              "description": "Print allowlisted commands as JSON and exit"
             },
             {
               "name": "json",
