@@ -43,6 +43,12 @@ scratch/
 test_data/temp/
 tmp/
 
+# Local build logs
+build-logs/
+
+# Local agent scratch/ignore file
+.gastown-ignore
+
 # Rust build directory
 target/
 crates/lib/database_queries/target/
