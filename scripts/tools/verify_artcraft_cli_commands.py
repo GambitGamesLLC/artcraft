@@ -17,6 +17,7 @@ This script is intended to validate the contract documented in:
 Usage:
   ./scripts/tools/verify_artcraft_cli_commands.py
   ./scripts/tools/verify_artcraft_cli_commands.py --run-unsafe-subset readonly --unsafe-gate-on
+  ./scripts/tools/verify_artcraft_cli_commands.py --run-unsafe-subset readonly-network --unsafe-gate-on
 
 Notes:
 - By default we isolate config reads by setting XDG_CONFIG_HOME to a temp dir.
@@ -50,13 +51,20 @@ ONE_BY_ONE_PNG_B64 = (
 
 # Initial, hardcoded UNSAFE subset(s) we allow this verifier to execute.
 # v1: readonly subset.
+# v2: readonly-network subset (hits network, should remain readonly).
 UNSAFE_SUBSETS: dict[str, list[str]] = {
     "readonly": [
         "get_app_info_command",
         "get_provider_order_command",
         "get_task_queue_command",
         "get_app_preferences_command",
-    ]
+    ],
+    "readonly-network": [
+        "estimate_image_cost_command",
+        "estimate_video_cost_command",
+        "storyteller_get_credits_command",
+        "storyteller_get_subscription_command",
+    ],
 }
 
 # If we ever include parsed JSON in an error message, redact these key families.
@@ -243,6 +251,38 @@ def verify_payload_hardening(binary: Path, env: dict[str, str], command: str) ->
     require(_extract_error_code(obj2) == "unsafe_gate_disabled", f"expected unsafe_gate_disabled (not payload read error) for {command} with @payload")
 
 
+def _payload_for_unsafe_subset_command(subset_name: str, cmd: str) -> str | None:
+    """Optional per-command payloads for UNSAFE subsets.
+
+    NOTE: Do not print payload contents.
+    """
+
+    if subset_name != "readonly-network":
+        return None
+
+    if cmd == "estimate_image_cost_command":
+        # Minimal, stable request. The handler ignores prompt and does not require auth.
+        req = {
+            "model": "nano_banana_pro",
+            "provider": "artcraft",
+            "generation_mode": {"type": "text_to_image"},
+        }
+        return json.dumps({"request": req})
+
+    if cmd == "estimate_video_cost_command":
+        req = {
+            "model": "grok_video",
+            "provider": "artcraft",
+            "generation_mode": {"type": "text_to_video"},
+            # Some models enforce a minimum duration; 1s keeps the request small.
+            "duration_seconds": 1,
+        }
+        return json.dumps({"request": req})
+
+    # storyteller_get_* commands take no arguments.
+    return None
+
+
 def run_unsafe_subset(binary: Path, env: dict[str, str], *, subset_name: str, unsafe_allowlist: list[str]) -> None:
     commands = UNSAFE_SUBSETS[subset_name]
 
@@ -251,11 +291,19 @@ def run_unsafe_subset(binary: Path, env: dict[str, str], *, subset_name: str, un
         require(cmd in unsafe_allowlist, f"requested UNSAFE subset command not in CLI unsafe allowlist: {cmd}")
 
     for cmd in commands:
-        rr = run_cmd([str(binary), "invoke", "--unsafe", cmd, "--json"], env=env)
+        payload = _payload_for_unsafe_subset_command(subset_name, cmd)
+
+        argv = [str(binary), "invoke", "--unsafe", cmd]
+        if payload is not None:
+            argv += ["--payload", payload]
+        argv += ["--json"]
+
+        rr = run_cmd(argv, env=env)
         if rr.code != 0:
             print(f"{cmd}: FAIL", file=sys.stderr)
             raise VerificationError(f"UNSAFE subset command {cmd} should exit 0, got {rr.code}")
 
+        # Require JSON-only stdout for all subset commands (no debug/log spew).
         obj = _json_from_stdout(rr.stdout)
         # Defensive: ensure any sensitive keys would be redacted if we ever print.
         _ = _redact_sensitive(copy.deepcopy(obj))
