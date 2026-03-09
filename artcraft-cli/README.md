@@ -31,11 +31,26 @@ artcraft invoke <command> [--payload <json|@file>] [--json] [--unsafe]
 ## Notes
 
 - The wrapper expects the binary at: `./target/release/artcraft`
-- Default mode keeps a strict allowlist for automation:
+
+### Safety policy (by design)
+
+- **Safe (default) = read-only only.**
+- **Generation (token-spend/provider calls) = unsafe.**
+- Unsafe requires **both** `--unsafe` **and** an enabled gate.
+- Enabling unsafe is an intentional escalation — you accept the risks (cost, side effects, data exposure).
+
+### Allowlists / gating
+
+- Default mode keeps a strict safe allowlist for automation:
   - `platform_info_command`
   - `get_app_info_command`
   - `get_task_queue_command`
-- `--unsafe` enables a broader dispatch tier (currently includes `get_provider_order_command`) but requires one gate:
+- `--unsafe` enables the unsafe dispatch tier (currently includes `get_provider_order_command`) but requires one gate:
   - env var: `ARTCRAFT_ENABLE_UNSAFE_INVOKE=1`
   - or config file: `~/.config/artcraft/cli.json` with `{"enableUnsafeInvoke": true}`
 - If `--unsafe` is used without a gate, CLI exits with code `2` and prints a JSON error.
+
+Where to edit the allowlists:
+
+- `../docs/cli-safety.md`
+- `../crates/desktop/artcraft/src/core/cli/invoke_dispatcher.rs` (`SAFE_INVOKE_ALLOWLIST`, `UNSAFE_INVOKE_ALLOWLIST`)

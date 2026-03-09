@@ -1,3 +1,24 @@
+// CLI invoke safety model
+//
+// ArtCraft exposes a single generic CLI entrypoint: `artcraft invoke <command> ...`.
+// By design, this is split into two tiers:
+//
+// - SAFE (default): read-only / introspection commands only.
+//   No file writes, no state mutation, and no network/provider calls that could spend tokens.
+//
+// - UNSAFE (explicit opt-in): anything that could mutate state, touch sensitive data,
+//   or call external providers (including *generation*, which is token/cost spending).
+//
+// Unsafe invocation requires BOTH:
+//   1) `--unsafe` on the CLI, AND
+//   2) the unsafe gate enabled (env var or config file; see `unsafe_gate_enabled()`).
+//
+// If you need to change what is allowed in each tier, edit this file:
+//   crates/desktop/artcraft/src/core/cli/invoke_dispatcher.rs
+// and update the allowlists below:
+//   - SAFE_INVOKE_ALLOWLIST
+//   - UNSAFE_INVOKE_ALLOWLIST
+
 use crate::core::commands::get_app_info_command::get_app_info_command;
 use crate::core::commands::platform_info_command::platform_info_command;
 use crate::core::commands::providers::get_provider_order_command::get_provider_order_command;
@@ -11,6 +32,18 @@ use serde::Deserialize;
 use serde_json::Value;
 use tauri::Manager;
 use tauri_plugin_cli::Matches;
+
+const CMD_PLATFORM_INFO: &str = "platform_info_command";
+const CMD_GET_APP_INFO: &str = "get_app_info_command";
+const CMD_GET_TASK_QUEUE: &str = "get_task_queue_command";
+
+const CMD_GET_PROVIDER_ORDER: &str = "get_provider_order_command";
+
+/// Safe commands are intentionally read-only.
+const SAFE_INVOKE_ALLOWLIST: [&str; 3] = [CMD_PLATFORM_INFO, CMD_GET_APP_INFO, CMD_GET_TASK_QUEUE];
+
+/// Unsafe commands require BOTH `--unsafe` and an enabled gate.
+const UNSAFE_INVOKE_ALLOWLIST: [&str; 1] = [CMD_GET_PROVIDER_ORDER];
 
 fn arg_string(matches: &Matches, name: &str) -> Option<String> {
   matches
@@ -143,13 +176,13 @@ pub fn dispatch_invoke(app: &tauri::App, invoke_matches: &Matches) -> i32 {
   }
 
   match command.as_str() {
-    "platform_info_command" => {
+    CMD_PLATFORM_INFO => {
       let result = platform_info_command();
       println!("{}", serde_json::to_string(&result).unwrap());
       0
     }
 
-    "get_app_info_command" => {
+    CMD_GET_APP_INFO => {
       let result = get_app_info_command(
         app.state::<AppDataRoot>(),
         app.state::<AppEnvConfigs>(),
@@ -160,7 +193,7 @@ pub fn dispatch_invoke(app: &tauri::App, invoke_matches: &Matches) -> i32 {
       0
     }
 
-    "get_task_queue_command" => {
+    CMD_GET_TASK_QUEUE => {
       // The GUI path registers TaskDatabase during startup; the CLI path must bootstrap it.
       if app.try_state::<TaskDatabase>().is_none() {
         let root_state = app.state::<AppDataRoot>();
@@ -206,7 +239,7 @@ pub fn dispatch_invoke(app: &tauri::App, invoke_matches: &Matches) -> i32 {
       }
     }
 
-    "get_provider_order_command" if unsafe_requested => {
+    CMD_GET_PROVIDER_ORDER if unsafe_requested => {
       ensure_provider_priority_store(app);
 
       let result = tauri::async_runtime::block_on(async {
@@ -227,7 +260,8 @@ pub fn dispatch_invoke(app: &tauri::App, invoke_matches: &Matches) -> i32 {
 
     _ => {
       let err = CommandErrorResponseWrapper::<(), ()>::from(format!(
-        "unknown or disallowed command: {command}"
+        "unknown or disallowed command: {command}. Safe allowlist: {:?}. Unsafe allowlist (requires --unsafe + gate): {:?}",
+        SAFE_INVOKE_ALLOWLIST, UNSAFE_INVOKE_ALLOWLIST
       ));
       println!("{}", serde_json::to_string(&err).unwrap());
       3

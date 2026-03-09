@@ -1,5 +1,10 @@
 # ArtCraft CLI - Quick Reference
 
+**Safety model (by design):** safe = read-only only; generation/provider token-spend calls = unsafe.
+Unsafe requires **both** `--unsafe` and a gate (env/config). Enabling unsafe is an intentional escalation — you accept the risks (cost, side effects, data exposure).
+
+Details + where to edit allowlists: `../docs/cli-safety.md` and `../crates/desktop/artcraft/src/core/cli/invoke_dispatcher.rs`.
+
 ## Generic invoke (safe allowlist)
 
 ```bash

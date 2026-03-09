@@ -82,7 +82,16 @@ those providers, for example: OpenArt, FreePik, etc.
 
 ## CLI automation (generic `invoke`)
 
-For headless automation, ArtCraft exposes a small allowlisted CLI entrypoint:
+For headless automation, ArtCraft exposes a small allowlisted CLI entrypoint.
+
+**Policy (by design):**
+
+- **Safe (default) = read-only only.** Intentionally conservative for automation/agents.
+- **Generation (token-spend/provider calls) = unsafe.**
+- Unsafe requires **both** `--unsafe` **and** an enabled gate (env/config).
+- Enabling unsafe is an intentional escalation — you accept the risks (cost, side effects, data exposure), similar to running agentic tools.
+
+Safe examples:
 
 ```bash
 ./target/release/artcraft invoke platform_info_command --json
@@ -90,7 +99,7 @@ For headless automation, ArtCraft exposes a small allowlisted CLI entrypoint:
 ./target/release/artcraft invoke get_task_queue_command --json
 ```
 
-`--unsafe` enables a broader dispatch tier, but only when a gate is enabled:
+Unsafe invoke (gated):
 
 ```bash
 # gate via env var
@@ -102,6 +111,11 @@ ARTCRAFT_ENABLE_UNSAFE_INVOKE=1 ./target/release/artcraft invoke --unsafe get_pr
 ```
 
 If `--unsafe` is used without either gate, CLI exits with code `2` and prints a JSON error.
+
+Docs + where to edit the allowlists:
+
+- `docs/cli-safety.md`
+- `crates/desktop/artcraft/src/core/cli/invoke_dispatcher.rs`
 
 See also: `./artcraft-cli.sh --help`
 
