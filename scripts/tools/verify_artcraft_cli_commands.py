@@ -17,7 +17,8 @@ This script is intended to validate the contract documented in:
 Usage:
   ./scripts/tools/verify_artcraft_cli_commands.py
   ./scripts/tools/verify_artcraft_cli_commands.py --run-unsafe-subset readonly --unsafe-gate-on
-  ./scripts/tools/verify_artcraft_cli_commands.py --run-unsafe-subset readonly-network --unsafe-gate-on
+  ./scripts/tools/verify_artcraft_cli_commands.py --run-unsafe-subset readonly-network-cost --unsafe-gate-on
+  ./scripts/tools/verify_artcraft_cli_commands.py --run-unsafe-subset readonly-account --unsafe-gate-on --allow-credentialed
 
 Notes:
 - By default we isolate config reads by setting XDG_CONFIG_HOME to a temp dir.
@@ -51,7 +52,8 @@ ONE_BY_ONE_PNG_B64 = (
 
 # Initial, hardcoded UNSAFE subset(s) we allow this verifier to execute.
 # v1: readonly subset.
-# v2: readonly-network subset (hits network, should remain readonly).
+# v2: readonly-network-cost subset (hits network, should remain readonly; no credentials).
+# v3: readonly-account subset (credentialed account reads; explicit opt-in required).
 UNSAFE_SUBSETS: dict[str, list[str]] = {
     "readonly": [
         "get_app_info_command",
@@ -59,9 +61,11 @@ UNSAFE_SUBSETS: dict[str, list[str]] = {
         "get_task_queue_command",
         "get_app_preferences_command",
     ],
-    "readonly-network": [
+    "readonly-network-cost": [
         "estimate_image_cost_command",
         "estimate_video_cost_command",
+    ],
+    "readonly-account": [
         "storyteller_get_credits_command",
         "storyteller_get_subscription_command",
     ],
@@ -257,33 +261,48 @@ def _payload_for_unsafe_subset_command(subset_name: str, cmd: str) -> str | None
     NOTE: Do not print payload contents.
     """
 
-    if subset_name != "readonly-network":
+    if subset_name != "readonly-network-cost":
+        # readonly + readonly-account commands currently take no payload.
         return None
 
     if cmd == "estimate_image_cost_command":
-        # Minimal, stable request. The handler ignores prompt and does not require auth.
-        req = {
+        # NOTE: estimate_*_cost requests are NOT wrapped in {"request": ...}.
+        # Keep this payload minimal and stable for smoke tests.
+        payload = {
             "model": "nano_banana_pro",
             "provider": "artcraft",
             "generation_mode": {"type": "text_to_image"},
+            "aspect_ratio": None,
+            "resolution": None,
+            "image_batch_count": None,
         }
-        return json.dumps({"request": req})
+        return json.dumps(payload)
 
     if cmd == "estimate_video_cost_command":
-        req = {
-            "model": "grok_video",
+        # Use a known-supported model to keep the verifier stable.
+        payload = {
+            "model": "seedance_2p0",
             "provider": "artcraft",
             "generation_mode": {"type": "text_to_video"},
+            "aspect_ratio": None,
+            "resolution": None,
             # Some models enforce a minimum duration; 1s keeps the request small.
             "duration_seconds": 1,
+            "video_batch_count": None,
         }
-        return json.dumps({"request": req})
+        return json.dumps(payload)
 
-    # storyteller_get_* commands take no arguments.
     return None
 
 
-def run_unsafe_subset(binary: Path, env: dict[str, str], *, subset_name: str, unsafe_allowlist: list[str]) -> None:
+def run_unsafe_subset(
+    binary: Path,
+    env: dict[str, str],
+    *,
+    subset_name: str,
+    unsafe_allowlist: list[str],
+    allow_credentialed: bool,
+) -> None:
     commands = UNSAFE_SUBSETS[subset_name]
 
     # Validate we are only running known-UNSAFE commands.
@@ -291,6 +310,10 @@ def run_unsafe_subset(binary: Path, env: dict[str, str], *, subset_name: str, un
         require(cmd in unsafe_allowlist, f"requested UNSAFE subset command not in CLI unsafe allowlist: {cmd}")
 
     for cmd in commands:
+        if subset_name == "readonly-account" and not allow_credentialed:
+            print(f"{cmd}: SKIPPED (credentialed; re-run with --allow-credentialed)")
+            continue
+
         payload = _payload_for_unsafe_subset_command(subset_name, cmd)
 
         argv = [str(binary), "invoke", "--unsafe", cmd]
@@ -327,6 +350,11 @@ def main() -> int:
         "--unsafe-gate-on",
         action="store_true",
         help="Explicit opt-in safety latch: enable the UNSAFE invoke gate for --run-unsafe-subset",
+    )
+    ap.add_argument(
+        "--allow-credentialed",
+        action="store_true",
+        help="Allow running credentialed UNSAFE subsets (e.g. readonly-account). Without this flag they are SKIPPED.",
     )
     args = ap.parse_args()
 
@@ -382,6 +410,7 @@ def main() -> int:
                     env=env_gate_on,
                     subset_name=args.unsafe_subset,
                     unsafe_allowlist=unsafe2,
+                    allow_credentialed=args.allow_credentialed,
                 )
 
         except (VerificationError, subprocess.TimeoutExpired) as e:
