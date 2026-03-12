@@ -1,0 +1,7 @@
+{
+  "database": "dolt",
+  "backend": "dolt",
+  "dolt_mode": "server",
+  "dolt_database": "gambit_artcraft",
+  "project_id": "eb04eea9-9c6c-4492-9d7d-daf47d3f2736"
+}
