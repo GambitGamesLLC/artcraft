@@ -11,8 +11,9 @@
 
 ## Start Here
 
-This is the **single canonical ArtCraft plan**. All other ArtCraft plan docs have been archived for history:
-- `plans/artcraft/_archive/2026-03-09/`
+This is the **single canonical active ArtCraft plan** for this repo. Historical and superseded plan docs now live in:
+- `.plans/archive/`
+- legacy pull-in archive: `.plans/_archive/2026-03-09/`
 
 ### Canonical repo-level specs (source of truth)
 
@@ -20,6 +21,23 @@ These live in the ArtCraft fork repo and should be referenced rather than duplic
 - `projects/gambit-artcraft/docs/COMMAND_MATRIX.md`
 - `projects/gambit-artcraft/docs/COMMAND_VERIFICATION_MATRIX.md`
 - `projects/gambit-artcraft/scripts/tools/verify_artcraft_cli_commands.py`
+- `projects/gambit-artcraft/docs/CLI_E2E_CREDENTIAL_MATRIX.md`
+- `projects/gambit-artcraft/docs/CLI_E2E_CREDENTIAL_HANDOFF.md`
+- `projects/gambit-artcraft/docs/CLI_E2E_PROVIDER_ROLLOUT.md`
+
+### Credentialed E2E readiness (new)
+
+Before the next unsafe-command execution pass, use the two docs above as the credential/auth source of truth.
+
+Execution order is now explicitly staged (see `docs/CLI_E2E_PROVIDER_ROLLOUT.md` for the operator checklist):
+1. local-only + readonly local smoke tests
+2. credentialed readonly-account checks (`storyteller_get_credits_command`, `storyteller_get_subscription_command`)
+3. provider login/bootstrap validation (Sora first, then Midjourney, Grok, WorldLabs)
+4. readonly/network-cost calls
+5. cost-bearing generation flows by provider/model, cheapest-first
+6. destructive/admin/billing commands last, only with deliberate disposable fixtures
+
+If upstream provides a billing sandbox, digital twin, or clarifies current FAL CLI support, update the staged E2E coverage plan before broadening execution.
 
 ### OpenClaw integration references
 - `projects/openclaw-artcraft/packages/client/README.md`
@@ -327,7 +345,9 @@ In `openclaw-artcraft` (repo `~/.openclaw/workspace/projects/openclaw-artcraft`)
 - Skill docs enabled in workspace via symlink:
   - `~/.openclaw/workspace/skills/openclaw-artcraft` → `projects/openclaw-artcraft/skills/openclaw-artcraft`
 
-### Remaining work
+### Remaining active work
+This repo is past build/install and local CLI verification. The only meaningful unfinished work still tracked here is upstream preparation.
+
 - Prepare upstream Issue(s) + PR(s) for ArtCraft changes (recommend split):
   - PR A: core CLI contract + safety (`invoke_dispatcher.rs`, `tauri.conf.json`, wiring)
   - PR B: verifier + docs (`verify_artcraft_cli_commands.py`, `COMMAND_*MATRIX*.md`, wrapper docs)
@@ -335,6 +355,7 @@ In `openclaw-artcraft` (repo `~/.openclaw/workspace/projects/openclaw-artcraft`)
   - ensure we’re not shipping irrelevant fixes/docs/plans/config/logs
   - confirm `.gitignore` covers local noise (e.g. `build-logs/`, `.gastown-ignore`)
   - scan PR diff for any workspace-only paths or local build artifacts
+- If needed before PR creation, do one final installed-binary smoke pass on `/usr/bin/artcraft` to confirm the shipped CLI contract still matches docs/examples.
 
 Recent “docs reflect reality” commits worth calling out:
 - `gambit-artcraft` (`chip/artcraft-cli-buildfix`):
@@ -348,14 +369,13 @@ Recent “docs reflect reality” commits worth calling out:
 
 ## References (Former plans consolidated into this canonical doc)
 
-This file replaces and consolidates earlier plan docs. As of 2026-03-09, the historical plans were **archived** (not deleted) under:
-- `plans/artcraft/_archive/2026-03-09/`
+This file replaces and consolidates earlier plan docs. As of 2026-03-12, superseded repo-local plans were archived under:
+- `.plans/archive/`
+- legacy imported archive: `.plans/_archive/2026-03-09/`
 
-Note: a prior note claimed `artcraft-external-ipc-control-2026-03-07.md` was hard-deleted; the file exists as:
-- `plans/gambit-artcraft/artcraft-external-ipc-control-2026-03-07.md`
-
+The original exploratory plan `artcraft-external-ipc-control-2026-03-07.md` is preserved in `.plans/archive/` rather than deleted.
 
 ---
 
 *Created: 2026-03-08*  
-*Last updated: 2026-03-09*
+*Last updated: 2026-03-12*
